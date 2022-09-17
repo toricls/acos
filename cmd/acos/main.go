@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cheynewallace/tabby"
+	"github.com/olekukonko/tablewriter"
 
 	"github.com/toricls/acos"
 )
@@ -47,17 +47,24 @@ func main() {
 		return
 	}
 
-	t := tabby.New()
-	t.AddHeader("AccountID", "AccountName", "This Month", "vs Yesterday", "Last Month")
+	// print table
+	t := tablewriter.NewWriter(os.Stdout)
+	t.SetHeader([]string{"Account ID", "Account Name", "This Month ($)", "vs Yesterday ($)", "Last Month ($)"})
+	t.SetColumnAlignment([]int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_RIGHT})
 	for _, c := range costs {
-		thisMonth := fmt.Sprintf("%f %s", c.AmountThisMonth, c.Currency)
-		positiveOrNegative := "+"
-		if c.AmountYesterday < 0.0 {
-			positiveOrNegative = "-"
-		}
-		vsYesterday := fmt.Sprintf("%s%f %s", positiveOrNegative, c.AmountYesterday, c.Currency)
-		lastMonth := fmt.Sprintf("%f %s", c.AmountLastMonth, c.Currency)
-		t.AddLine(c.AccountID, c.AccountName, thisMonth, vsYesterday, lastMonth)
+		thisMonth := fmt.Sprintf("%f", c.AmountThisMonth)
+		vsYesterday := fmt.Sprintf("%s %f", getAmountPrefix(c.AmountYesterday), c.AmountYesterday)
+		lastMonth := fmt.Sprintf("%f", c.AmountLastMonth)
+		t.Append([]string{c.AccountID, c.AccountName, thisMonth, vsYesterday, lastMonth})
 	}
-	t.Print()
+	t.Render()
+}
+
+func getAmountPrefix(amount float64) string {
+	if amount > 0.0 {
+		return "+"
+	} else if amount < 0.0 {
+		return "-"
+	}
+	return ""
 }

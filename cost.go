@@ -28,7 +28,6 @@ type Cost struct {
 	AmountYesterday float64
 	AmountLastMonth float64
 	AmountThisMonth float64
-	Currency        string
 }
 
 type Costs map[string]Cost // map[accountId]Cost
@@ -135,7 +134,6 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 				c = &Cost{
 					AccountID:   accntId,
 					AccountName: accounts[accntId].Name,
-					Currency:    *g.Metrics["UnblendedCost"].Unit,
 				}
 				cs[accntId] = c
 			}

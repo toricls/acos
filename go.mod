@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.17.5
 	github.com/aws/aws-sdk-go-v2/service/costexplorer v1.19.9
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.16.11
-	github.com/cheynewallace/tabby v1.1.1
+	github.com/olekukonko/tablewriter v0.0.5
 )
 
 require (
@@ -25,6 +25,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-isatty v0.0.8 // indirect
+	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/stretchr/testify v1.7.2 // indirect
 	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
