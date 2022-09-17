@@ -138,7 +138,8 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 				cs[accntId] = c
 			}
 
-			if *r.TimePeriod.End == today {
+			// There's no monthly bill increase from yesterday on the first day of month.
+			if *r.TimePeriod.End == today && today != firstDayOfThisMonth {
 				c.AmountYesterday = amount
 			}
 
