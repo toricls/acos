@@ -1,6 +1,6 @@
 # acos
 
-`acos` is a tiny CLI tool to retrieve and show your AWS costs.
+`acos` is an interactive CLI tool to retrieve and show your AWS costs.
 
 ## Prerequisites
 
@@ -9,7 +9,7 @@
 ## Usage
 
 ```shell
-$ acos
+$ go run ./cmd/acos
 ```
 
 ## Contribution
