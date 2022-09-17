@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/olekukonko/tablewriter"
 
@@ -51,12 +52,19 @@ func main() {
 	t := tablewriter.NewWriter(os.Stdout)
 	t.SetHeader([]string{"Account ID", "Account Name", "This Month ($)", "vs Yesterday ($)", "Last Month ($)"})
 	t.SetColumnAlignment([]int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_RIGHT})
+	totalThisMonth, totalYesterday, totalLastMonth := 0.0, 0.0, 0.0
 	for _, c := range costs {
 		thisMonth := fmt.Sprintf("%f", c.AmountThisMonth)
 		vsYesterday := fmt.Sprintf("%s %f", getAmountPrefix(c.AmountYesterday), c.AmountYesterday)
 		lastMonth := fmt.Sprintf("%f", c.AmountLastMonth)
 		t.Append([]string{c.AccountID, c.AccountName, thisMonth, vsYesterday, lastMonth})
+		totalThisMonth += c.AmountThisMonth
+		totalYesterday += c.AmountYesterday
+		totalLastMonth += c.AmountLastMonth
 	}
+	t.SetFooter([]string{"", "Total", fmt.Sprintf("%f", totalThisMonth), fmt.Sprintf("%s %f", getAmountPrefix(totalYesterday), totalYesterday), fmt.Sprintf("%f", totalLastMonth)})
+	t.SetFooterAlignment(tablewriter.ALIGN_RIGHT)
+	t.SetCaption(true, fmt.Sprintf("As of %s.", time.Now().Format("2006-01-02")))
 	t.Render()
 }
 
