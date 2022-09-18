@@ -27,12 +27,13 @@ func chooseAccounts(ctx context.Context) (acos.Accounts, error) {
 		i++
 	}
 	q := &survey.MultiSelect{
-		Message: "Choose accounts to show costs:",
-		Options: opts,
+		Message:  "Choose accounts to show costs:",
+		Options:  opts,
+		PageSize: 10,
 	}
 
 	var selIdx []int
-	err = survey.AskOne(q, &selIdx)
+	err = survey.AskOne(q, &selIdx, survey.WithPageSize(10))
 	if err != nil {
 		return nil, err
 	}
