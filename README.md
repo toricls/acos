@@ -16,7 +16,7 @@
 
 ```shell
 $ go run ./cmd/acos
-? Choose accounts to show costs: 567890123456 - my-prod, 123456789012 - my-sandbox
+? Select accounts: 567890123456 - my-prod, 123456789012 - my-sandbox
 +--------------+--------------+----------------+------------------+----------------+
 |  ACCOUNT ID  | ACCOUNT NAME | THIS MONTH ($) | VS YESTERDAY ($) | LAST MONTH ($) |
 +--------------+--------------+----------------+------------------+----------------+

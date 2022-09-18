@@ -9,8 +9,8 @@ import (
 	"github.com/toricls/acos"
 )
 
-// chooseAccounts prompts the user to select AWS accounts to retrieve costs.
-func chooseAccounts(ctx context.Context) (acos.Accounts, error) {
+// selectAccounts prompts the user to select AWS accounts to retrieve costs.
+func selectAccounts(ctx context.Context) (acos.Accounts, error) {
 	accnts, err := acos.ListAccounts(ctx)
 
 	if err != nil {
@@ -47,7 +47,7 @@ func chooseAccounts(ctx context.Context) (acos.Accounts, error) {
 		i++
 	}
 	q := &survey.MultiSelect{
-		Message:  "Choose accounts to show costs:",
+		Message:  "Select accounts:",
 		Options:  opts,
 		PageSize: 10,
 	}

@@ -30,7 +30,7 @@ func main() {
 			}
 		}
 	} else {
-		accountIds, err = chooseAccounts(ctx)
+		accountIds, err = selectAccounts(ctx)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			return
