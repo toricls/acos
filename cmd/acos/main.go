@@ -20,7 +20,7 @@ func main() {
 
 	accountIdsForDebugging := os.Getenv("COMMA_SEPARATED_ACCOUNT_IDS")
 	if accountIdsForDebugging != "" {
-		fmt.Println("Running using debugging account IDs...")
+		fmt.Fprintln(os.Stderr, "Running using debugging account IDs...")
 		_accnts := strings.Split(accountIdsForDebugging, ",")
 		accountIds = acos.Accounts{}
 		for _, id := range _accnts {
@@ -32,7 +32,7 @@ func main() {
 	} else {
 		accountIds, err = chooseAccounts(ctx)
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Fprintln(os.Stderr, err.Error())
 			return
 		}
 	}
@@ -44,7 +44,7 @@ func main() {
 		ExcludeRefund:  false,
 		ExcludeSupport: false,
 	}); err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		return
 	}
 
