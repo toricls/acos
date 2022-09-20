@@ -9,8 +9,8 @@ import (
 	"github.com/toricls/acos"
 )
 
-// selectAccounts prompts the user to select AWS accounts to retrieve costs.
-func selectAccounts(ctx context.Context) (acos.Accounts, error) {
+// getAccounts returns a list of AWS accounts.
+func getAccounts(ctx context.Context) (acos.Accounts, error) {
 	accnts, err := acos.ListAccounts(ctx)
 
 	if err != nil {
@@ -28,9 +28,28 @@ func selectAccounts(ctx context.Context) (acos.Accounts, error) {
 		}
 	}
 
+	return accnts, err
+}
+
+// getCallerAccount returns the AWS account information of the caller.
+//
+// This function expects to be used when the caller is not part of AWS Organizations organization,
+// or when the caller doesn't have IAM permissions to perform "organizations:ListAccounts".
+func getCallerAccount(ctx context.Context) (acos.Accounts, error) {
+	accnt, err := acos.GetCallerAccount(ctx)
 	if err != nil {
 		return nil, err
 	}
+	acosAccounts := make(acos.Accounts)
+	acosAccounts[accnt[0]] = acos.Account{
+		Id:   accnt[0],
+		Name: accnt[1],
+	}
+	return acosAccounts, nil
+}
+
+// selectAccounts prompts the user to select AWS accounts to retrieve costs.
+func selectAccounts(accnts acos.Accounts) (acos.Accounts, error) {
 	if len(accnts) == 0 {
 		return nil, fmt.Errorf("error no accounts found")
 	} else if len(accnts) == 1 {
@@ -53,7 +72,7 @@ func selectAccounts(ctx context.Context) (acos.Accounts, error) {
 	}
 
 	var selIdx []int
-	err = survey.AskOne(q, &selIdx, survey.WithPageSize(10))
+	err := survey.AskOne(q, &selIdx, survey.WithPageSize(10))
 	if err != nil {
 		return nil, err
 	}
@@ -67,21 +86,4 @@ func selectAccounts(ctx context.Context) (acos.Accounts, error) {
 		result[accntId] = accnts[accntId]
 	}
 	return result, nil
-}
-
-// getCallerAccount returns the AWS account information of the caller.
-//
-// This function expects to be used when the caller is not part of AWS Organizations organization,
-// or when the caller doesn't have IAM permissions to perform "organizations:ListAccounts".
-func getCallerAccount(ctx context.Context) (acos.Accounts, error) {
-	accnt, err := acos.GetCallerAccount(ctx)
-	if err != nil {
-		return nil, err
-	}
-	acosAccounts := make(acos.Accounts)
-	acosAccounts[accnt[0]] = acos.Account{
-		Id:   accnt[0],
-		Name: accnt[1],
-	}
-	return acosAccounts, nil
 }

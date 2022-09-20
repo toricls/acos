@@ -12,33 +12,40 @@ import (
 	"github.com/toricls/acos"
 )
 
+var accntIdsForDebugging = os.Getenv("COMMA_SEPARATED_ACCOUNT_IDS")
+
 func main() {
 	ctx := context.Background()
 
-	var accountIds acos.Accounts
+	var availableAccnts acos.Accounts
 	var err error
 
-	accountIdsForDebugging := os.Getenv("COMMA_SEPARATED_ACCOUNT_IDS")
-	if accountIdsForDebugging != "" {
+	if len(accntIdsForDebugging) > 0 {
 		fmt.Fprintln(os.Stderr, "Running using debugging account IDs...")
-		_accnts := strings.Split(accountIdsForDebugging, ",")
-		accountIds = acos.Accounts{}
+		_accnts := strings.Split(accntIdsForDebugging, ",")
+		availableAccnts = acos.Accounts{}
 		for _, id := range _accnts {
-			accountIds[id] = acos.Account{
+			availableAccnts[id] = acos.Account{
 				Id:   id,
 				Name: id,
 			}
 		}
 	} else {
-		accountIds, err = selectAccounts(ctx)
+		availableAccnts, err = getAccounts(ctx)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			return
 		}
 	}
 
+	selectedAccnts, err := selectAccounts(availableAccnts)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return
+	}
+
 	var costs acos.Costs
-	if costs, err = acos.GetCosts(ctx, accountIds, &acos.GetCostsOptions{
+	if costs, err = acos.GetCosts(ctx, selectedAccnts, &acos.GetCostsOptions{
 		ExcludeCredit:  true,
 		ExcludeUpfront: true,
 		ExcludeRefund:  false,
@@ -49,11 +56,16 @@ func main() {
 	}
 
 	// print table
+	print(&costs)
+}
+
+func print(costs *acos.Costs) {
+	// print table
 	t := tablewriter.NewWriter(os.Stdout)
 	t.SetHeader([]string{"Account ID", "Account Name", "This Month ($)", "vs Yesterday ($)", "Last Month ($)"})
 	t.SetColumnAlignment([]int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_RIGHT})
 	totalThisMonth, totalYesterday, totalLastMonth := 0.0, 0.0, 0.0
-	for _, c := range costs {
+	for _, c := range *costs {
 		thisMonth := fmt.Sprintf("%f", c.AmountThisMonth)
 		vsYesterday := fmt.Sprintf("%s %f", getAmountPrefix(c.AmountYesterday), c.AmountYesterday)
 		lastMonth := fmt.Sprintf("%f", c.AmountLastMonth)
