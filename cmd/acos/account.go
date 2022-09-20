@@ -69,6 +69,10 @@ func selectAccounts(ctx context.Context) (acos.Accounts, error) {
 	return result, nil
 }
 
+// getCallerAccount returns the AWS account information of the caller.
+//
+// This function expects to be used when the caller is not part of AWS Organizations organization,
+// or when the caller doesn't have IAM permissions to perform "organizations:ListAccounts".
 func getCallerAccount(ctx context.Context) (acos.Accounts, error) {
 	accnt, err := acos.GetCallerAccount(ctx)
 	if err != nil {
