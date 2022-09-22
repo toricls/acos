@@ -16,6 +16,8 @@ var (
 	costExplorerClient *costexplorer.Client
 )
 
+const costMetric = "UnblendedCost"
+
 func init() {
 	costExplorerClient = costexplorer.NewFromConfig(cfg)
 }
@@ -38,6 +40,18 @@ type GetCostsOptions struct {
 	ExcludeUpfront bool
 	ExcludeRefund  bool
 	ExcludeSupport bool
+}
+
+func getAccountId(g *types.Group) string {
+	return g.Keys[0]
+}
+
+func getAmount(g *types.Group) float64 {
+	if f, err := strconv.ParseFloat(*g.Metrics[costMetric].Amount, 32); err == nil {
+		return f
+	}
+	// TODO: debug log the error
+	return 0
 }
 
 // GetCosts returns the costs for given accounts.
@@ -64,7 +78,7 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 
 	in := &costexplorer.GetCostAndUsageInput{
 		Granularity: "DAILY",
-		Metrics:     []string{"UnblendedCost"},
+		Metrics:     []string{costMetric},
 		TimePeriod:  timePeriod,
 		GroupBy: []types.GroupDefinition{
 			{
@@ -121,21 +135,21 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 	if err != nil {
 		return nil, err
 	}
-	cs := make(map[string]*Cost)
+	costs := make(map[string]Cost)
 
 	// The "range out.ResultsByTime" loop below assumes that the "out.ResultsByTime" slice items are alredy sorted by "r.TimePeriod.Start"
 	isThisMonth := false
 	for _, r := range out.ResultsByTime {
 		for _, g := range r.Groups {
-			accntId := g.Keys[0]
-			amount, _ := strconv.ParseFloat(*g.Metrics["UnblendedCost"].Amount, 32)
-			c, ok := cs[accntId]
+			accntId := getAccountId(&g)
+			amount := getAmount(&g)
+
+			c, ok := costs[accntId]
 			if !ok {
-				c = &Cost{
+				c = Cost{
 					AccountID:   accntId,
 					AccountName: accounts[accntId].Name,
 				}
-				cs[accntId] = c
 			}
 
 			// There's no monthly bill increase from yesterday on the first day of month.
@@ -152,12 +166,10 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 			} else {
 				c.AmountLastMonth += amount
 			}
+
+			costs[accntId] = c
 		}
 	}
 
-	costs := make(map[string]Cost)
-	for _, c := range cs {
-		costs[c.AccountID] = *c
-	}
 	return costs, nil
 }
