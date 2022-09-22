@@ -135,55 +135,64 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 		})
 	}
 
-	out, err := ceClient.GetCostAndUsage(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-
+	var nextToken *string
 	costs := make(map[string]Cost)
-	thisMonth := false
-	for _, r := range out.ResultsByTime {
+	for {
+		in.NextPageToken = nextToken
 
-		if *r.TimePeriod.Start == firstDayOfThisMonth {
-			// We assume that the AWS API returns sorted "out.ResultsByTime" slice items
-			// by "r.TimePeriod.Start".
-			// So we can assume that the rest of the items are also for this month, when
-			// the "r.TimePeriod.Start" equals to the "first day of this month",
-			thisMonth = true
+		out, err := ceClient.GetCostAndUsage(ctx, in)
+		if err != nil {
+			return nil, err
 		}
 
-		for _, g := range r.Groups {
-			accntId := getAccountId(&g)
-			amount := getAmount(&g)
+		thisMonth := false
+		for _, r := range out.ResultsByTime {
 
-			c, ok := costs[accntId]
-			if !ok {
-				c = Cost{
-					AccountID:   accntId,
-					AccountName: accounts[accntId].Name,
+			if *r.TimePeriod.Start == firstDayOfThisMonth {
+				// We assume that the AWS API returns sorted "out.ResultsByTime" slice items
+				// by "r.TimePeriod.Start".
+				// So we can assume that the rest of the items are also for this month, when
+				// the "r.TimePeriod.Start" equals to the "first day of this month",
+				thisMonth = true
+			}
+
+			for _, g := range r.Groups {
+				accntId := getAccountId(&g)
+				amount := getAmount(&g)
+
+				c, ok := costs[accntId]
+				if !ok {
+					c = Cost{
+						AccountID:   accntId,
+						AccountName: accounts[accntId].Name,
+					}
 				}
-			}
 
-			if *r.TimePeriod.End == today {
-				// The types.ResultByTime item which represents yesterday's cost should have
-				// today's date in "r.TimePeriod.End", and yesterday's date in "r.TimePeriod.Start".
-				// Because we call the AWS API with "DAILY" granularity, we don't need to test the
-				// "r.TimePeriod.Start" value.
+				if *r.TimePeriod.End == today {
+					// The types.ResultByTime item which represents yesterday's cost should have
+					// today's date in "r.TimePeriod.End", and yesterday's date in "r.TimePeriod.Start".
+					// Because we call the AWS API with "DAILY" granularity, we don't need to test the
+					// "r.TimePeriod.Start" value.
 
-				if today != firstDayOfThisMonth {
-					// But also there's no "current month's bill increase" from yesterday when
-					// today is the first day of month.
-					c.LatestDailyCostIncreaase = amount
+					if today != firstDayOfThisMonth {
+						// But also there's no "current month's bill increase" from yesterday when
+						// today is the first day of month.
+						c.LatestDailyCostIncreaase = amount
+					}
 				}
-			}
 
-			if thisMonth {
-				c.AmountThisMonth += amount
-			} else {
-				c.AmountLastMonth += amount
-			}
+				if thisMonth {
+					c.AmountThisMonth += amount
+				} else {
+					c.AmountLastMonth += amount
+				}
 
-			costs[accntId] = c
+				costs[accntId] = c
+			}
+		}
+		nextToken = out.NextPageToken
+		if nextToken == nil {
+			break
 		}
 	}
 
