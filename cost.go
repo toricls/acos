@@ -13,23 +13,27 @@ import (
 
 var (
 	// AWS clients
-	costExplorerClient *costexplorer.Client
+	ceClient *costexplorer.Client
 )
 
-const costMetric = "UnblendedCost"
-
 func init() {
-	costExplorerClient = costexplorer.NewFromConfig(cfg)
+	ceClient = costexplorer.NewFromConfig(cfg)
 }
+
+const (
+	ceDataGranularity = "DAILY"
+	ceCostMetric      = "UnblendedCost"
+	ceCostGroupBy     = "LINKED_ACCOUNT"
+)
 
 // Cost represents a cost for a given account.
 type Cost struct {
-	AccountID       string
-	AccountName     string
-	Amount          float64
-	AmountYesterday float64
-	AmountLastMonth float64
-	AmountThisMonth float64
+	AccountID                string
+	AccountName              string
+	Amount                   float64
+	LatestDailyCostIncreaase float64
+	AmountLastMonth          float64
+	AmountThisMonth          float64
 }
 
 type Costs map[string]Cost // map[accountId]Cost
@@ -47,7 +51,7 @@ func getAccountId(g *types.Group) string {
 }
 
 func getAmount(g *types.Group) float64 {
-	if f, err := strconv.ParseFloat(*g.Metrics[costMetric].Amount, 32); err == nil {
+	if f, err := strconv.ParseFloat(*g.Metrics[ceCostMetric].Amount, 32); err == nil {
 		return f
 	}
 	// TODO: debug log the error
@@ -63,7 +67,7 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 		i++
 	}
 
-	// acos shows by default - THIS_MONTH, vs YESTERDAY, and LAST_MONTH
+	// acos shows the following by default - THIS_MONTH, vs YESTERDAY, and LAST_MONTH
 	dateFmt := "2006-01-02"
 	t := time.Now().UTC()
 	today := t.Format(dateFmt)
@@ -77,20 +81,20 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 	firstDayOfThisMonth := time.Date(year, month, 1, 0, 0, 0, 0, t.Location()).Format(dateFmt)
 
 	in := &costexplorer.GetCostAndUsageInput{
-		Granularity: "DAILY",
-		Metrics:     []string{costMetric},
+		Granularity: ceDataGranularity,
+		Metrics:     []string{ceCostMetric},
 		TimePeriod:  timePeriod,
 		GroupBy: []types.GroupDefinition{
 			{
 				Type: types.GroupDefinitionTypeDimension,
-				Key:  aws.String("LINKED_ACCOUNT"),
+				Key:  aws.String(ceCostGroupBy),
 			},
 		},
 		Filter: &types.Expression{
 			And: []types.Expression{
 				{
 					Dimensions: &types.DimensionValues{
-						Key:    "LINKED_ACCOUNT",
+						Key:    ceCostGroupBy,
 						Values: accountIds,
 					},
 				},
@@ -131,15 +135,23 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 		})
 	}
 
-	out, err := costExplorerClient.GetCostAndUsage(ctx, in)
+	out, err := ceClient.GetCostAndUsage(ctx, in)
 	if err != nil {
 		return nil, err
 	}
-	costs := make(map[string]Cost)
 
-	// The "range out.ResultsByTime" loop below assumes that the "out.ResultsByTime" slice items are alredy sorted by "r.TimePeriod.Start"
-	isThisMonth := false
+	costs := make(map[string]Cost)
+	thisMonth := false
 	for _, r := range out.ResultsByTime {
+
+		if *r.TimePeriod.Start == firstDayOfThisMonth {
+			// We assume that the AWS API returns sorted "out.ResultsByTime" slice items
+			// by "r.TimePeriod.Start".
+			// So we can assume that the rest of the items are also for this month, when
+			// the "r.TimePeriod.Start" equals to the "first day of this month",
+			thisMonth = true
+		}
+
 		for _, g := range r.Groups {
 			accntId := getAccountId(&g)
 			amount := getAmount(&g)
@@ -152,16 +164,20 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 				}
 			}
 
-			// There's no monthly bill increase from yesterday on the first day of month.
-			if *r.TimePeriod.End == today && today != firstDayOfThisMonth {
-				c.AmountYesterday = amount
+			if *r.TimePeriod.End == today {
+				// The types.ResultByTime item which represents yesterday's cost should have
+				// today's date in "r.TimePeriod.End", and yesterday's date in "r.TimePeriod.Start".
+				// Because we call the AWS API with "DAILY" granularity, we don't need to test the
+				// "r.TimePeriod.Start" value.
+
+				if today != firstDayOfThisMonth {
+					// But also there's no "current month's bill increase" from yesterday when
+					// today is the first day of month.
+					c.LatestDailyCostIncreaase = amount
+				}
 			}
 
-			if *r.TimePeriod.Start == firstDayOfThisMonth {
-				isThisMonth = true
-			}
-
-			if isThisMonth {
+			if thisMonth {
 				c.AmountThisMonth += amount
 			} else {
 				c.AmountLastMonth += amount

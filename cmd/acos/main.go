@@ -67,11 +67,11 @@ func print(costs *acos.Costs) {
 	totalThisMonth, totalYesterday, totalLastMonth := 0.0, 0.0, 0.0
 	for _, c := range *costs {
 		thisMonth := fmt.Sprintf("%f", c.AmountThisMonth)
-		vsYesterday := fmt.Sprintf("%s %f", getAmountPrefix(c.AmountYesterday), c.AmountYesterday)
+		vsYesterday := fmt.Sprintf("%s %f", getAmountPrefix(c.LatestDailyCostIncreaase), c.LatestDailyCostIncreaase)
 		lastMonth := fmt.Sprintf("%f", c.AmountLastMonth)
 		t.Append([]string{c.AccountID, c.AccountName, thisMonth, vsYesterday, lastMonth})
 		totalThisMonth += c.AmountThisMonth
-		totalYesterday += c.AmountYesterday
+		totalYesterday += c.LatestDailyCostIncreaase
 		totalLastMonth += c.AmountLastMonth
 	}
 	t.SetFooter([]string{"", "Total", fmt.Sprintf("%f", totalThisMonth), fmt.Sprintf("%s %f", getAmountPrefix(totalYesterday), totalYesterday), fmt.Sprintf("%f", totalLastMonth)})
