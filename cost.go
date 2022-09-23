@@ -27,16 +27,40 @@ const (
 	ceCostGroupBy     = "LINKED_ACCOUNT"
 )
 
-// GetCostsOptions represents options for GetCosts. The default values are:
+// AcosGetCostsOption represents options for GetCosts. The default values are:
 // - ExcludeCredit : true
 // - ExcludeUpfront: true
 // - ExcludeRefund : false
 // - ExcludeSupport: false
-type GetCostsOptions struct {
+type AcosGetCostsOption struct {
 	ExcludeCredit  bool
 	ExcludeUpfront bool
 	ExcludeRefund  bool
 	ExcludeSupport bool
+	// acos requires the following dates to show - THIS_MONTH, vs YESTERDAY, and LAST_MONTH
+	dates struct {
+		today               string
+		firstDayOfLastMonth string
+		firstDayOfThisMonth string // Just for flagging within the sum-up logic
+	}
+}
+
+func NewGetCostsOption() AcosGetCostsOption {
+	opt := AcosGetCostsOption{
+		ExcludeCredit:  true,
+		ExcludeUpfront: true,
+		ExcludeRefund:  false,
+		ExcludeSupport: false,
+	}
+
+	dateFmt := "2006-01-02"
+	t := time.Now().UTC()
+	year, month, _ := t.Date()
+
+	opt.dates.today = t.Format(dateFmt)
+	opt.dates.firstDayOfThisMonth = time.Date(year, month, 1, 0, 0, 0, 0, t.Location()).Format(dateFmt)
+	opt.dates.firstDayOfLastMonth = time.Date(year, month-1, 1, 0, 0, 0, 0, t.Location()).Format(dateFmt)
+	return opt
 }
 
 // Cost represents a cost for a given account.
@@ -68,13 +92,12 @@ func (g *Group) getAmount() float64 {
 
 // GetCosts returns the costs for given accounts.
 // It raises an error when the `accounts` arg doesn't contain any account.
-func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Costs, error) {
+func GetCosts(ctx context.Context, accounts Accounts, opt AcosGetCostsOption) (Costs, error) {
 	accountIds := accounts.AccountIds()
 	if len(accountIds) == 0 {
 		return nil, fmt.Errorf("error no account to retrieve cost: GetCosts requires at least one account in Accounts")
 	}
-	dates := newGetCostsOptionDates(time.Now().UTC())
-	input := newGetCostAndUsageInput(opt, dates, accountIds)
+	ceOpt := acosOptToCostExplorerOpt(opt, accountIds)
 
 	// The following GetCostAndUsage API won't return any result in some cases (e.g. when the account is newly created).
 	// We create and fill the result map with the account IDs and names first, and then fill the amount later,
@@ -92,9 +115,9 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 
 	var nextToken *string
 	for {
-		input.NextPageToken = nextToken
+		ceOpt.NextPageToken = nextToken
 
-		out, err := ceClient.GetCostAndUsage(ctx, &input)
+		out, err := ceClient.GetCostAndUsage(ctx, &ceOpt)
 		if err != nil {
 			return nil, err
 		}
@@ -102,7 +125,7 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 		thisMonth := false
 		for _, r := range out.ResultsByTime {
 
-			if *r.TimePeriod.Start == dates.firstDayOfThisMonth {
+			if *r.TimePeriod.Start == opt.dates.firstDayOfThisMonth {
 				// We assume that the AWS API returns sorted "out.ResultsByTime" slice items
 				// by "r.TimePeriod.Start".
 				// So we can assume that the rest of the items are also for this month, when
@@ -125,13 +148,13 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 					c.AmountLastMonth += amount
 				}
 
-				if *r.TimePeriod.End == dates.today {
+				if *r.TimePeriod.End == opt.dates.today {
 					// The types.ResultByTime item which represents yesterday's cost should have
 					// today's date in "r.TimePeriod.End", and yesterday's date in "r.TimePeriod.Start".
 					// Because we call the AWS API with "DAILY" granularity, we don't need to test the
 					// "r.TimePeriod.Start" value.
 
-					if dates.today != dates.firstDayOfThisMonth {
+					if opt.dates.today != opt.dates.firstDayOfThisMonth {
 						// But also there's no "current month's bill increase" from yesterday when
 						// today is the first day of month.
 						c.LatestDailyCostIncrease = amount
@@ -151,42 +174,15 @@ func GetCosts(ctx context.Context, accounts Accounts, opt *GetCostsOptions) (Cos
 	return costs, nil
 }
 
-// acos requires the following dates to show - THIS_MONTH, vs YESTERDAY, and LAST_MONTH
-type getCostsOptionDates struct {
-	today               string
-	firstDayOfLastMonth string
-	firstDayOfThisMonth string // Just for flagging within the sum-up logic
-}
-
-func newGetCostsOptionDates(date time.Time) getCostsOptionDates {
-	dateFmt := "2006-01-02"
-	t := time.Now().UTC()
-	year, month, _ := t.Date()
-	return getCostsOptionDates{
-		today:               t.Format(dateFmt),
-		firstDayOfLastMonth: time.Date(year, month-1, 1, 0, 0, 0, 0, t.Location()).Format(dateFmt),
-		firstDayOfThisMonth: time.Date(year, month, 1, 0, 0, 0, 0, t.Location()).Format(dateFmt),
-	}
-}
-
-func newGetCostAndUsageInput(opt *GetCostsOptions, dates getCostsOptionDates, accountIds []string) costexplorer.GetCostAndUsageInput {
-	if opt == nil {
-		// default option
-		opt = &GetCostsOptions{
-			ExcludeCredit:  true,
-			ExcludeUpfront: true,
-			ExcludeRefund:  false,
-			ExcludeSupport: false,
-		}
-	}
-
+// acosOptToCostExplorerOpt returns the AWS Cost Explorer's GetCostAndUsageInput param built from the acos options.
+func acosOptToCostExplorerOpt(opt AcosGetCostsOption, accountIds []string) costexplorer.GetCostAndUsageInput {
 	// Base input parameter
 	in := costexplorer.GetCostAndUsageInput{
 		Granularity: ceDataGranularity,
 		Metrics:     []string{ceCostMetric},
 		TimePeriod: &types.DateInterval{
-			Start: aws.String(dates.firstDayOfLastMonth),
-			End:   aws.String(dates.today),
+			Start: aws.String(opt.dates.firstDayOfLastMonth),
+			End:   aws.String(opt.dates.today),
 		},
 		GroupBy: []types.GroupDefinition{
 			{

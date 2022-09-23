@@ -10,7 +10,7 @@ func TestGetCosts(t *testing.T) {
 	type args struct {
 		ctx      context.Context
 		accounts Accounts
-		opt      *GetCostsOptions
+		opt      AcosGetCostsOption
 	}
 	tests := []struct {
 		name    string
@@ -23,7 +23,7 @@ func TestGetCosts(t *testing.T) {
 			args: args{
 				ctx:      context.Background(),
 				accounts: Accounts{},
-				opt:      nil,
+				opt:      NewGetCostsOption(),
 			},
 			want:    nil,
 			wantErr: true,

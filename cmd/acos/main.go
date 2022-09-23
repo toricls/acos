@@ -27,12 +27,7 @@ func main() {
 	}
 
 	var costs acos.Costs
-	if costs, err = acos.GetCosts(ctx, selectedAccnts, &acos.GetCostsOptions{
-		ExcludeCredit:  true,
-		ExcludeUpfront: true,
-		ExcludeRefund:  false,
-		ExcludeSupport: false,
-	}); err != nil {
+	if costs, err = acos.GetCosts(ctx, selectedAccnts, acos.NewGetCostsOption()); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return
 	}
