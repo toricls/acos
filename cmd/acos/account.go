@@ -34,7 +34,7 @@ func getAvailableAccounts(ctx context.Context) (acos.Accounts, error) {
 			if !acos.IsOrganizationEnabled(err) {
 				fmt.Fprint(os.Stderr, "This AWS account is not part of AWS Organizations organization. ")
 				fallback = true
-			} else if !acos.HasPermissionToOrganizationsAPI(err) {
+			} else if !acos.HasPermissionToOrganizationsApi(err) {
 				fmt.Fprint(os.Stderr, "You don't have IAM permissions to perform \"organizations:ListAccounts\". ")
 				fallback = true
 			}

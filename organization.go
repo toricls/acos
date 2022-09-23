@@ -63,7 +63,7 @@ func IsOrganizationEnabled(err error) bool {
 	return !errors.As(err, &errType)
 }
 
-func HasPermissionToOrganizationsAPI(err error) bool {
+func HasPermissionToOrganizationsApi(err error) bool {
 	var errType *types.AccessDeniedException
 	return !errors.As(err, &errType)
 }
