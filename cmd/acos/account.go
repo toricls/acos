@@ -4,31 +4,47 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/toricls/acos"
 )
 
-// getAccounts returns a list of AWS accounts.
-func getAccounts(ctx context.Context) (acos.Accounts, error) {
-	accnts, err := acos.ListAccounts(ctx)
+var accntIdsForDebugging = os.Getenv("COMMA_SEPARATED_ACCOUNT_IDS")
 
-	if err != nil {
-		fallback := false
-		if !acos.IsOrganizationEnabled(err) {
-			fmt.Fprint(os.Stderr, "This AWS account is not part of AWS Organizations organization. ")
-			fallback = true
-		} else if !acos.HasPermissionToOrganizationsAPI(err) {
-			fmt.Fprint(os.Stderr, "You don't have IAM permissions to perform \"organizations:ListAccounts\". ")
-			fallback = true
+// getAvailableAccounts returns a list of AWS accounts which the caller has access to.
+func getAvailableAccounts(ctx context.Context) (acos.Accounts, error) {
+	var availableAccnts acos.Accounts
+	var err error
+
+	if len(accntIdsForDebugging) > 0 {
+		fmt.Fprintln(os.Stderr, "Running using debugging account IDs...")
+		_accnts := strings.Split(accntIdsForDebugging, ",")
+		availableAccnts = acos.Accounts{}
+		for _, id := range _accnts {
+			availableAccnts[id] = acos.Account{
+				Id:   &id,
+				Name: &id,
+			}
 		}
-		if fallback {
-			fmt.Fprintln(os.Stderr, "Using AWS STS and IAM instead to obtain your AWS account information...")
-			accnts, err = getCallerAccount(ctx)
+	} else {
+		availableAccnts, err = acos.ListAccounts(ctx)
+		if err != nil {
+			fallback := false
+			if !acos.IsOrganizationEnabled(err) {
+				fmt.Fprint(os.Stderr, "This AWS account is not part of AWS Organizations organization. ")
+				fallback = true
+			} else if !acos.HasPermissionToOrganizationsAPI(err) {
+				fmt.Fprint(os.Stderr, "You don't have IAM permissions to perform \"organizations:ListAccounts\". ")
+				fallback = true
+			}
+			if fallback {
+				fmt.Fprintln(os.Stderr, "Using AWS STS and IAM instead to obtain your AWS account information...")
+				availableAccnts, err = getCallerAccount(ctx)
+			}
 		}
 	}
-
-	return accnts, err
+	return availableAccnts, err
 }
 
 // getCallerAccount returns the AWS account information of the caller.
@@ -42,13 +58,15 @@ func getCallerAccount(ctx context.Context) (acos.Accounts, error) {
 	}
 	acosAccounts := make(acos.Accounts)
 	acosAccounts[accnt[0]] = acos.Account{
-		Id:   accnt[0],
-		Name: accnt[1],
+		Id:   &accnt[0],
+		Name: &accnt[1],
 	}
 	return acosAccounts, nil
 }
 
 // selectAccounts prompts the user to select AWS accounts to retrieve costs.
+// It returns an error if the `accnts` arg doesn't contain any Account.
+// If the `accnts` arg contains only one Account, it never prompts the user.
 func selectAccounts(accnts acos.Accounts) (acos.Accounts, error) {
 	if len(accnts) == 0 {
 		return nil, fmt.Errorf("error no accounts found")
@@ -61,8 +79,8 @@ func selectAccounts(accnts acos.Accounts) (acos.Accounts, error) {
 	accntIds := make([]string, len(accnts))
 	i := 0
 	for _, a := range accnts {
-		opts[i] = fmt.Sprintf("%s - %s", a.Id, a.Name)
-		accntIds[i] = a.Id
+		opts[i] = fmt.Sprintf("%s - %s", *a.Id, *a.Name)
+		accntIds[i] = *a.Id
 		i++
 	}
 	q := &survey.MultiSelect{

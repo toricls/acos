@@ -17,12 +17,21 @@ func init() {
 	organizationsClient = organizations.NewFromConfig(cfg)
 }
 
-type Account struct {
-	Id   string
-	Name string
-}
+// Account wraps up AWS Organization Account struct.
+type Account types.Account
 
 type Accounts map[string]Account // map[accountId]Account
+
+// AccountIds returns a list of account IDs.
+func (a *Accounts) AccountIds() []string {
+	accountIds := make([]string, len(*a))
+	i := 0
+	for key := range *a {
+		accountIds[i] = key
+		i++
+	}
+	return accountIds
+}
 
 // ListAccounts returns a list of AWS accounts within an AWS Organization organization.
 func ListAccounts(ctx context.Context) (Accounts, error) {
@@ -39,11 +48,7 @@ func ListAccounts(ctx context.Context) (Accounts, error) {
 			return nil, err
 		}
 		for _, acc := range out.Accounts {
-			a := Account{
-				Id:   *acc.Id,
-				Name: *acc.Name,
-			}
-			accnts[a.Id] = a
+			accnts[*acc.Id] = Account(acc)
 		}
 		nextToken = out.NextToken
 		if nextToken == nil {
