@@ -64,10 +64,10 @@ func getCallerAccount(ctx context.Context) (acos.Accounts, error) {
 	return acosAccounts, nil
 }
 
-// selectAccounts prompts the user to select AWS accounts to retrieve costs.
+// promptAccountsSelection prompts the user to select AWS accounts to retrieve costs.
 // It returns an error if the `accnts` arg doesn't contain any Account.
 // If the `accnts` arg contains only one Account, it never prompts the user.
-func selectAccounts(accnts acos.Accounts) (acos.Accounts, error) {
+func promptAccountsSelection(accnts acos.Accounts) (acos.Accounts, error) {
 	if len(accnts) == 0 {
 		return nil, fmt.Errorf("error no accounts found")
 	} else if len(accnts) == 1 {

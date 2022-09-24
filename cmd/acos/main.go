@@ -20,7 +20,7 @@ func main() {
 		return
 	}
 
-	selectedAccnts, err := selectAccounts(availableAccnts)
+	selectedAccnts, err := promptAccountsSelection(availableAccnts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return

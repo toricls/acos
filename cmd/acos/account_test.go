@@ -50,7 +50,7 @@ func Test_selectAccounts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := selectAccounts(tt.args.accnts)
+			got, err := promptAccountsSelection(tt.args.accnts)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("selectAccounts() error = %v, wantErr %v", err, tt.wantErr)
 				return
