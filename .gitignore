@@ -1,7 +1,24 @@
-# VSCode
-.vscode
+# acos
+dist/
 
-# src https://github.com/github/gitignore/blob/master/Go.gitignore
+# VSCode: https://github.com/github/gitignore/blob/e5323759e387ba347a9d50f8b0ddd16502eb71d4/Global/VisualStudioCode.gitignore
+.vscode/*
+#!.vscode/settings.json
+#!.vscode/tasks.json
+#!.vscode/launch.json
+#!.vscode/extensions.json
+#!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+# Go: https://github.com/github/gitignore/blob/e5323759e387ba347a9d50f8b0ddd16502eb71d4/Go.gitignore
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
+#
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -14,3 +31,9 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
