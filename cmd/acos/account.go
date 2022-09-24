@@ -10,12 +10,15 @@ import (
 	"github.com/toricls/acos"
 )
 
+const ERR_AWS_ORGANIZATION_NOT_ENABLED = "This AWS account is not part of AWS Organizations organization. "
+
 var accntIdsForDebugging = os.Getenv("COMMA_SEPARATED_ACCOUNT_IDS")
 
-// getAvailableAccounts returns a list of AWS accounts which the caller has access to.
-func getAvailableAccounts(ctx context.Context) (acos.Accounts, error) {
+// getAccounts returns a list of AWS accounts which the caller has access to.
+func getAccounts(ctx context.Context, ouId string) (acos.Accounts, error) {
 	var availableAccnts acos.Accounts
 	var err error
+	fallback := false
 
 	if len(accntIdsForDebugging) > 0 {
 		fmt.Fprintln(os.Stderr, "Running using debugging account IDs...")
@@ -27,22 +30,39 @@ func getAvailableAccounts(ctx context.Context) (acos.Accounts, error) {
 				Name: &id,
 			}
 		}
+	} else if len(ouId) > 0 {
+		fmt.Fprintf(os.Stderr, "Retrieving AWS accounts under the OU '%s'...\n", ouId)
+		// Should regex the ouId before calling the API?
+		// Doc - https://docs.aws.amazon.com/organizations/latest/APIReference/API_ListAccountsForParent.html#organizations-ListAccountsForParent-request-ParentId
+		availableAccnts, err = acos.ListAccountsByOu(ctx, ouId)
+		if err != nil {
+			if !acos.OuExists(err) {
+				// To avoid duplicated error messages, we override the AWS error by our own.
+				err = fmt.Errorf("error the OU \"%s\" doesn't exist", ouId)
+			} else if !acos.IsOrganizationEnabled(err) {
+				fmt.Fprint(os.Stderr, ERR_AWS_ORGANIZATION_NOT_ENABLED)
+				fallback = true
+			} else if !acos.HasPermissionToOrganizationsApi(err) {
+				fmt.Fprint(os.Stderr, "You don't have IAM permissions to perform \"organizations:ListAccountsForParent\". ")
+				fallback = true
+			}
+		}
 	} else {
 		availableAccnts, err = acos.ListAccounts(ctx)
 		if err != nil {
-			fallback := false
 			if !acos.IsOrganizationEnabled(err) {
-				fmt.Fprint(os.Stderr, "This AWS account is not part of AWS Organizations organization. ")
+				fmt.Fprint(os.Stderr, ERR_AWS_ORGANIZATION_NOT_ENABLED)
 				fallback = true
 			} else if !acos.HasPermissionToOrganizationsApi(err) {
 				fmt.Fprint(os.Stderr, "You don't have IAM permissions to perform \"organizations:ListAccounts\". ")
 				fallback = true
 			}
-			if fallback {
-				fmt.Fprintln(os.Stderr, "Using AWS STS and IAM instead to retrieve your AWS account information...")
-				availableAccnts, err = getCallerAccount(ctx)
-			}
 		}
+	}
+
+	if fallback {
+		fmt.Fprintln(os.Stderr, "Using AWS STS and IAM instead to retrieve your AWS account information... ")
+		availableAccnts, err = getCallerAccount(ctx)
 	}
 	return availableAccnts, err
 }

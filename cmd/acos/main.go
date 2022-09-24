@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -12,24 +13,27 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	var ouId string
+	flag.StringVar(&ouId, "ou", "", "Optional - The ID of an AWS Organizational Unit (OU) or Root to list direct-children AWS accounts. It starts with 'ou-' or 'r-' prefix.")
+	flag.Parse()
 
-	availableAccnts, err := getAvailableAccounts(ctx)
+	ctx := context.Background()
+	accnts, err := getAccounts(ctx, ouId)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
-		return
+		os.Exit(1)
 	}
 
-	selectedAccnts, err := promptAccountsSelection(availableAccnts)
+	selectedAccnts, err := promptAccountsSelection(accnts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
-		return
+		os.Exit(2)
 	}
 
 	var costs acos.Costs
 	if costs, err = acos.GetCosts(ctx, selectedAccnts, acos.NewGetCostsOption()); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
-		return
+		os.Exit(3)
 	}
 
 	// print table

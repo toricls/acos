@@ -58,6 +58,32 @@ func ListAccounts(ctx context.Context) (Accounts, error) {
 	return accnts, nil
 }
 
+// ListAccountsByOu returns a list of direct-children AWS accounts of an AWS Organization OU.
+func ListAccountsByOu(ctx context.Context, ouId string) (Accounts, error) {
+	var nextToken *string
+	accnts := make(map[string]Account)
+	for {
+		out, err := organizationsClient.ListAccountsForParent(
+			ctx,
+			&organizations.ListAccountsForParentInput{
+				ParentId:  &ouId,
+				NextToken: nextToken,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+		for _, acc := range out.Accounts {
+			accnts[*acc.Id] = Account(acc)
+		}
+		nextToken = out.NextToken
+		if nextToken == nil {
+			break
+		}
+	}
+	return accnts, nil
+}
+
 func IsOrganizationEnabled(err error) bool {
 	var errType *types.AWSOrganizationsNotInUseException
 	return !errors.As(err, &errType)
@@ -65,5 +91,10 @@ func IsOrganizationEnabled(err error) bool {
 
 func HasPermissionToOrganizationsApi(err error) bool {
 	var errType *types.AccessDeniedException
+	return !errors.As(err, &errType)
+}
+
+func OuExists(err error) bool {
+	var errType *types.ParentNotFoundException
 	return !errors.As(err, &errType)
 }
