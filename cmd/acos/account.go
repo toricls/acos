@@ -39,7 +39,7 @@ func getAvailableAccounts(ctx context.Context) (acos.Accounts, error) {
 				fallback = true
 			}
 			if fallback {
-				fmt.Fprintln(os.Stderr, "Using AWS STS and IAM instead to obtain your AWS account information...")
+				fmt.Fprintln(os.Stderr, "Using AWS STS and IAM instead to retrieve your AWS account information...")
 				availableAccnts, err = getCallerAccount(ctx)
 			}
 		}
