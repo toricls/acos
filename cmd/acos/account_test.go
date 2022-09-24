@@ -22,7 +22,7 @@ func Test_selectAccounts(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "got an error when empty accounts",
+			name: "error when empty accounts",
 			args: args{
 				accnts: acos.Accounts{},
 			},

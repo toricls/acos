@@ -22,7 +22,7 @@ func TestGetCosts(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "got an error when empty accounts",
+			name: "error when empty accounts",
 			args: args{
 				ctx:      context.Background(),
 				accounts: Accounts{},
@@ -75,7 +75,7 @@ func TestWithMock_GetCosts(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "returns zero-cost information even GetCostAndUsage API returns no result", // Because newly created account has no billed cost in most cases.
+			name: "selected account must exists in result", // even GetCostAndUsage API returns no result. This is because newly created account has no billed cost in most cases.
 			args: args{
 				ctx: context.Background(),
 				accounts: Accounts{
