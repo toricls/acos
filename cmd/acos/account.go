@@ -110,7 +110,12 @@ func promptAccountsSelection(accnts acos.Accounts) (acos.Accounts, error) {
 	}
 
 	var selIdx []int
-	err := survey.AskOne(q, &selIdx, survey.WithPageSize(10))
+	err := survey.AskOne(
+		q,
+		&selIdx,
+		survey.WithPageSize(10),
+		survey.WithKeepFilter(true), // It would be useful to keep the typed filter because we assume that people often use some sort of "prefix" for related AWS account names like "myproduct-prod", "myproduct-staging", "my-product-qa", ...
+	)
 	if err != nil {
 		return nil, err
 	}
