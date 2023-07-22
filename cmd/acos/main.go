@@ -17,7 +17,7 @@ func main() {
 	var ouId, asOfStr, comparedTo string
 	flag.StringVar(&ouId, "ou", "", "Optional - The ID of an AWS Organizational Unit (OU) or Root to list direct-children AWS accounts. It starts with 'ou-' or 'r-' prefix.")
 	flag.StringVar(&asOfStr, "asOf", "", "Optional - The date to retrieve the cost data. The format should be 'YYYY-MM-DD'. The default value is today in UTC.")
-	flag.StringVar(&comparedTo, "comparedTo", "YESTERDAY", "Optional - The cost of this month will be compared to either one of 'YESTERDAY' or 'LAST_WEEK'. The default value is 'YESTERDAY'.")
+	flag.StringVar(&comparedTo, "comparedTo", "YESTERDAY", "Optional - The cost of this month will be compared to either one of 'YESTERDAY' or 'LAST_WEEK'.")
 	flag.Parse()
 
 	var asOf time.Time
