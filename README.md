@@ -17,12 +17,29 @@ When `acos` runs with the `--ou` option, it requires the below AWS IAM permissio
 
 *2) `acos` falls back to (1) [sts:GetCallerIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html) and (2) [iam:ListAccountAliases](https://docs.aws.amazon.com/IAM/latest/APIReference/API_ListAccountAliases.html) to retrieve your AWS account ID and alias, in case `organizations:ListAccounts` fails. This should happen when the AWS account you're accessing via `acos` is not part of an AWS Organization's organization and/or you don't have enough permissions to use the API.
 
+## Installation
+
+```shell
+$ go install github.com/toricls/acos/cmd/acos@latest
+```
+
 ## Usage
+
+```shell
+$ acos --help
+Usage of acos:
+  -asOf string
+    	Optional - The date to retrieve the cost data. The format should be 'YYYY-MM-DD'. The default value is today in UTC.
+  -comparedTo string
+    	Optional - The cost of this month will be compared to either one of 'YESTERDAY' or 'LAST_WEEK'. (default "YESTERDAY")
+  -ou string
+    	Optional - The ID of an AWS Organizational Unit (OU) or Root to list direct-children AWS accounts. It starts with 'ou-' or 'r-' prefix.
+```
 
 ### Accounts within AWS Organization
 
 ```shell
-$ go run ./cmd/acos
+$ acos
 ? Select accounts: 567890123456 - my-prod, 123456789012 - my-sandbox
 +--------------+--------------+----------------+------------------+----------------+
 |  ACCOUNT ID  | ACCOUNT NAME | THIS MONTH ($) | VS YESTERDAY ($) | LAST MONTH ($) |
@@ -32,15 +49,15 @@ $ go run ./cmd/acos
 +--------------+--------------+----------------+------------------+----------------+
 |                       TOTAL |    5820.373201 |     + 324.528317 |   10765.512070 |
 +--------------+--------------+----------------+------------------+----------------+
-As of 2022-09-18.
+As of 2023-07-18.
 ```
 
-### Accounts under specific AWS Organizational Unit
+### Accounts under specific AWS Organizational Unit (OU)
 
-Use `--ou` option to list direct-children AWS accounts of specific OU or Root.
+Use `--ou` option to filter selectable AWS accounts by specific OU.
 
 ```shell
-$ go run ./cmd/acos --ou ou-xxxx-12345678
+$ acos --ou ou-xxxx-12345678
 ? Select accounts: 234567890123 - my-dev, 123456789012 - my-sandbox
 +--------------+--------------+----------------+------------------+----------------+
 |  ACCOUNT ID  | ACCOUNT NAME | THIS MONTH ($) | VS YESTERDAY ($) | LAST MONTH ($) |
@@ -50,15 +67,15 @@ $ go run ./cmd/acos --ou ou-xxxx-12345678
 +--------------+--------------+----------------+------------------+----------------+
 |                       TOTAL |     420.140762 |      + 25.803267 |     980.568482 |
 +--------------+--------------+----------------+------------------+----------------+
-As of 2022-09-18.
+As of 2023-07-18.
 ```
 
 ## Todo
 
 - Add some tests
 - ~Support OU-based accounts listing~
-- Support command arguments, configuration file, and/or env vars for repeated use
-- Support JSON format output for piped command chaining
+- ~Support command arguments~, configuration file, and/or env vars for repeated use
+- Support JSON format output for piped commands chaining
 
 ## Contribution
 
