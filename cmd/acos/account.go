@@ -23,11 +23,12 @@ func getAccounts(ctx context.Context, ouId string) (acos.Accounts, error) {
 	if len(accntIdsForDebugging) > 0 {
 		fmt.Fprintln(os.Stderr, "Running using debugging account IDs...")
 		_accnts := strings.Split(accntIdsForDebugging, ",")
-		availableAccnts = acos.Accounts{}
+		availableAccnts = make(acos.Accounts, len(_accnts))
 		for _, id := range _accnts {
+			_id := strings.Clone(id)
 			availableAccnts[id] = acos.Account{
-				Id:   &id,
-				Name: &id,
+				Id:   &_id,
+				Name: &_id,
 			}
 		}
 	} else if len(ouId) > 0 {
@@ -92,6 +93,9 @@ func promptAccountsSelection(accnts acos.Accounts) (acos.Accounts, error) {
 		return nil, fmt.Errorf("error no accounts found")
 	} else if len(accnts) == 1 {
 		// No need to prompt the user to select accounts if there is only one account.
+		return accnts, nil
+	} else if len(accntIdsForDebugging) > 0 && len(accnts) > 0 {
+		// No need to prompt the user to select accounts if this is for debugging.
 		return accnts, nil
 	}
 
