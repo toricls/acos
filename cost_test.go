@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer"
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer/types"
@@ -26,7 +27,7 @@ func TestGetCosts(t *testing.T) {
 			args: args{
 				ctx:      context.Background(),
 				accounts: Accounts{},
-				opt:      NewGetCostsOption(),
+				opt:      NewGetCostsOption(time.Now().UTC()),
 			},
 			want:    nil,
 			wantErr: true,
@@ -84,7 +85,7 @@ func TestWithMock_GetCosts(t *testing.T) {
 						Name: toPointer("test"),
 					},
 				},
-				opt: NewGetCostsOption(),
+				opt: NewGetCostsOption(time.Now().UTC()),
 			},
 			want: Costs{
 				"123456789012": Cost{

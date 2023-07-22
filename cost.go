@@ -41,15 +41,16 @@ type AcosGetCostsOption struct {
 	ExcludeUpfront bool
 	ExcludeRefund  bool
 	ExcludeSupport bool
+
 	// acos requires the following dates to show - THIS_MONTH, vs YESTERDAY, and LAST_MONTH
 	dates struct {
-		today               string
+		asOf                string
 		firstDayOfLastMonth string
 		firstDayOfThisMonth string // Just for flagging within the sum-up logic
 	}
 }
 
-func NewGetCostsOption() AcosGetCostsOption {
+func NewGetCostsOption(asOfInUTC time.Time) AcosGetCostsOption {
 	opt := AcosGetCostsOption{
 		ExcludeCredit:  true,
 		ExcludeUpfront: true,
@@ -57,13 +58,14 @@ func NewGetCostsOption() AcosGetCostsOption {
 		ExcludeSupport: false,
 	}
 
-	dateFmt := "2006-01-02"
-	t := time.Now().UTC()
-	year, month, _ := t.Date()
+	year, month, _ := asOfInUTC.Date()
+	firstDayOfThisMonth := time.Date(year, month, 1, 0, 0, 0, 0, asOfInUTC.Location())
+	firstDayOfLastMonth := time.Date(year, month-1, 1, 0, 0, 0, 0, asOfInUTC.Location())
 
-	opt.dates.today = t.Format(dateFmt)
-	opt.dates.firstDayOfThisMonth = time.Date(year, month, 1, 0, 0, 0, 0, t.Location()).Format(dateFmt)
-	opt.dates.firstDayOfLastMonth = time.Date(year, month-1, 1, 0, 0, 0, 0, t.Location()).Format(dateFmt)
+	dateFmt := "2006-01-02" // Use the same format as the AWS API response, "types.ResultByTime.TimePeriod.Start/End".
+	opt.dates.asOf = asOfInUTC.Format(dateFmt)
+	opt.dates.firstDayOfThisMonth = firstDayOfThisMonth.Format(dateFmt)
+	opt.dates.firstDayOfLastMonth = firstDayOfLastMonth.Format(dateFmt)
 	return opt
 }
 
@@ -185,8 +187,9 @@ func acosOptToCostExplorerOpt(opt AcosGetCostsOption, accountIds []string) coste
 		Granularity: ceDataGranularity,
 		Metrics:     []string{ceCostMetric},
 		TimePeriod: &types.DateInterval{
+			// Get the cost for the last month and this month
 			Start: aws.String(opt.dates.firstDayOfLastMonth),
-			End:   aws.String(opt.dates.today),
+			End:   aws.String(opt.dates.asOf),
 		},
 		GroupBy: []types.GroupDefinition{
 			{
