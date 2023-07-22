@@ -89,11 +89,12 @@ func TestWithMock_GetCosts(t *testing.T) {
 			},
 			want: Costs{
 				"123456789012": Cost{
-					AccountID:               "123456789012",
-					AccountName:             "test",
-					LatestDailyCostIncrease: 0,
-					AmountLastMonth:         0,
-					AmountThisMonth:         0,
+					AccountID:                "123456789012",
+					AccountName:              "test",
+					LatestDailyCostIncrease:  0,
+					LatestWeeklyCostIncrease: 0,
+					AmountLastMonth:          0,
+					AmountThisMonth:          0,
 				},
 			},
 			wantErr: false,

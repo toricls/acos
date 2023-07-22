@@ -42,9 +42,10 @@ type AcosGetCostsOption struct {
 	ExcludeRefund  bool
 	ExcludeSupport bool
 
-	// acos requires the following dates to show - THIS_MONTH, vs YESTERDAY, and LAST_MONTH
+	// acos requires the following dates to show - THIS_MONTH, vs YESTERDAY, vs LAST_WEEK, and LAST_MONTH
 	dates struct {
 		asOf                string
+		oneWeekAgo          string
 		firstDayOfLastMonth string
 		firstDayOfThisMonth string // Just for flagging within the sum-up logic
 	}
@@ -58,12 +59,14 @@ func NewGetCostsOption(asOfInUTC time.Time) AcosGetCostsOption {
 		ExcludeSupport: false,
 	}
 
+	oneWeekAgo := asOfInUTC.Add(time.Duration(-7) * 24 * time.Hour)
 	year, month, _ := asOfInUTC.Date()
 	firstDayOfThisMonth := time.Date(year, month, 1, 0, 0, 0, 0, asOfInUTC.Location())
 	firstDayOfLastMonth := time.Date(year, month-1, 1, 0, 0, 0, 0, asOfInUTC.Location())
 
 	dateFmt := "2006-01-02" // Use the same format as the AWS API response, "types.ResultByTime.TimePeriod.Start/End".
 	opt.dates.asOf = asOfInUTC.Format(dateFmt)
+	opt.dates.oneWeekAgo = oneWeekAgo.Format(dateFmt)
 	opt.dates.firstDayOfThisMonth = firstDayOfThisMonth.Format(dateFmt)
 	opt.dates.firstDayOfLastMonth = firstDayOfLastMonth.Format(dateFmt)
 	return opt
@@ -71,11 +74,12 @@ func NewGetCostsOption(asOfInUTC time.Time) AcosGetCostsOption {
 
 // Cost represents a cost for a given account.
 type Cost struct {
-	AccountID               string
-	AccountName             string
-	LatestDailyCostIncrease float64
-	AmountLastMonth         float64
-	AmountThisMonth         float64
+	AccountID                string
+	AccountName              string
+	LatestDailyCostIncrease  float64
+	LatestWeeklyCostIncrease float64
+	AmountLastMonth          float64
+	AmountThisMonth          float64
 }
 
 // Costs represents a map of Cost. The map key is the account ID of the respective Cost.
@@ -111,11 +115,12 @@ func GetCosts(ctx context.Context, accounts Accounts, opt AcosGetCostsOption) (C
 	costs := make(map[string]Cost)
 	for _, a := range accounts {
 		costs[*a.Id] = Cost{
-			AccountID:               *a.Id,
-			AccountName:             *a.Name,
-			LatestDailyCostIncrease: 0,
-			AmountLastMonth:         0,
-			AmountThisMonth:         0,
+			AccountID:                *a.Id,
+			AccountName:              *a.Name,
+			LatestDailyCostIncrease:  0,
+			LatestWeeklyCostIncrease: 0,
+			AmountLastMonth:          0,
+			AmountThisMonth:          0,
 		}
 	}
 
@@ -129,6 +134,7 @@ func GetCosts(ctx context.Context, accounts Accounts, opt AcosGetCostsOption) (C
 		}
 
 		thisMonth := false
+		lastWeek := false
 		for _, r := range out.ResultsByTime {
 
 			if *r.TimePeriod.Start == opt.dates.firstDayOfThisMonth {
@@ -140,6 +146,10 @@ func GetCosts(ctx context.Context, accounts Accounts, opt AcosGetCostsOption) (C
 				// See the official doc for more details about the response data structure:
 				// https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html#API_GetCostAndUsage_ResponseSyntax
 				thisMonth = true
+			}
+			// Flag "lastWeek" if the first week has passed of this month.
+			if thisMonth && *r.TimePeriod.Start == opt.dates.oneWeekAgo {
+				lastWeek = true
 			}
 
 			for _, g := range r.Groups {
@@ -154,17 +164,21 @@ func GetCosts(ctx context.Context, accounts Accounts, opt AcosGetCostsOption) (C
 					c.AmountLastMonth += amount
 				}
 
-				if *r.TimePeriod.End == opt.dates.today {
-					// The types.ResultByTime item which represents yesterday's cost should have
-					// today's date in "r.TimePeriod.End", and yesterday's date in "r.TimePeriod.Start".
-					// Because we call the AWS API with "DAILY" granularity, we don't need to test the
-					// "r.TimePeriod.Start" value.
-
-					if opt.dates.today != opt.dates.firstDayOfThisMonth {
-						// But also there's no "current month's bill increase" from yesterday when
-						// today is the first day of month.
+				// Store yesterday's cost as the "latest daily cost increase".
+				//
+				// The types.ResultByTime item, that represents yesterday's cost, should has
+				// today's date in "r.TimePeriod.End", and yesterday's date in "r.TimePeriod.Start".
+				// We only check the "r.TimePeriod.End" value here, because we we called the AWS API
+				// with the "DAILY" granularity.
+				if *r.TimePeriod.End == opt.dates.asOf {
+					if opt.dates.asOf != opt.dates.firstDayOfThisMonth { // Unless today is the first day of month.
 						c.LatestDailyCostIncrease = amount
 					}
+				}
+
+				// Add the cost onto the "latest weekly cost increase".
+				if lastWeek {
+					c.LatestWeeklyCostIncrease += amount
 				}
 
 				costs[accntId] = c
