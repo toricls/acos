@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/olekukonko/tablewriter"
@@ -66,6 +67,13 @@ func main() {
 }
 
 func print(costs *acos.Costs, comparedTo string, asOf time.Time) {
+	// Sort map keys by AWS Account ID
+	keys := make([]string, 0, len(*costs))
+	for k := range *costs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	// print table
 	t := tablewriter.NewWriter(os.Stdout)
 	incrHeaderTxt := "vs Yesterday ($)"
@@ -75,7 +83,8 @@ func print(costs *acos.Costs, comparedTo string, asOf time.Time) {
 	t.SetHeader([]string{"Account ID", "Account Name", "This Month ($)", incrHeaderTxt, "Last Month ($)"})
 	t.SetColumnAlignment([]int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_RIGHT})
 	totalThisMonth, totalIncrease, totalLastMonth := 0.0, 0.0, 0.0
-	for _, c := range *costs {
+	for _, k := range keys {
+		c := (*costs)[k]
 		thisMonth := fmt.Sprintf("%f", c.AmountThisMonth)
 		incr := c.LatestDailyCostIncrease
 		if comparedTo == "LAST_WEEK" {
