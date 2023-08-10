@@ -2,6 +2,8 @@
 
 `acos` is an interactive CLI tool to retrieve and show your AWS costs 💸
 
+![acos demo](acos-demo.gif)
+
 ## Prerequisites
 
 `acos` requires the below AWS IAM permissions to retrieve cost related data by default.
