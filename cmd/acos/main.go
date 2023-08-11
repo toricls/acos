@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/olekukonko/tablewriter"
@@ -16,12 +17,13 @@ import (
 
 func main() {
 	// Flags
-	var ouId, asOfStr, comparedTo string
+	var ouId, asOfStr, comparedTo, commaSeparatedAccountIds string
 	var useJson bool
-	flag.StringVar(&ouId, "ou", "", "Optional - The ID of an AWS Organizational Unit (OU) or Root to list direct-children AWS accounts. It starts with 'ou-' or 'r-' prefix.")
+	flag.StringVar(&ouId, "ou", "", "Optional - The ID of an AWS Organizational Unit (OU) or Root to list direct-children AWS accounts. It must start with 'ou-' or 'r-' prefix. This flag is ignored when the -accountIds flag is set.")
 	flag.StringVar(&asOfStr, "asOf", "", "Optional - The date to retrieve the cost data. The format should be 'YYYY-MM-DD'. The default value is today in UTC.")
 	flag.StringVar(&comparedTo, "comparedTo", "YESTERDAY", "Optional - The cost of this month will be compared to either one of 'YESTERDAY' or 'LAST_WEEK'. This flag is ignored when the -json flag is set.")
-	flag.BoolVar(&useJson, "json", false, "Optional - Print JSON instead of a table.")
+	flag.BoolVar(&useJson, "json", false, "Optional - Print JSON instead of table.")
+	flag.StringVar(&commaSeparatedAccountIds, "accountIds", "", "Optional - Comma-separated AWS account IDs to retrieve costs. The interactive account selector is skipped when this flag is set.")
 	flag.Parse()
 
 	var asOf time.Time
@@ -45,14 +47,29 @@ func main() {
 		os.Exit(2)
 	}
 
+	var accountIds []string
+	if len(commaSeparatedAccountIds) > 0 {
+		accountIds = strings.Split(commaSeparatedAccountIds, ",")
+	}
+
 	// Choose AWS accounts to show costs
 	ctx := context.Background()
-	accnts, err := getAccounts(ctx, ouId)
+	var candidateAccounts, selectedAccounts acos.Accounts
+	var err error
+	candidateAccounts, err = getAccounts(ctx, GetAccountsOption{
+		AccountIds: accountIds,
+		OuId:       ouId,
+	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(3)
 	}
-	selectedAccnts, err := promptAccountsSelection(accnts)
+	if len(accountIds) > 0 {
+		// Skip the interactive account selector when the -accountIds flag is set.
+		selectedAccounts = candidateAccounts
+	} else {
+		selectedAccounts, err = promptAccountsSelection(candidateAccounts)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(4)
@@ -60,7 +77,7 @@ func main() {
 
 	// Get costs
 	var costs acos.Costs
-	if costs, err = acos.GetCosts(ctx, selectedAccnts, acos.NewGetCostsOption(asOf)); err != nil {
+	if costs, err = acos.GetCosts(ctx, selectedAccounts, acos.NewGetCostsOption(asOf)); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(5)
 	}

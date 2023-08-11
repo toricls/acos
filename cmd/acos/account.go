@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/toricls/acos"
@@ -12,60 +11,84 @@ import (
 
 const ERR_AWS_ORGANIZATION_NOT_ENABLED = "This AWS account is not part of AWS Organizations organization. "
 
-var accntIdsForDebugging = os.Getenv("COMMA_SEPARATED_ACCOUNT_IDS")
+type GetAccountsOption struct {
+	AccountIds []string
+	OuId       string
+}
 
 // getAccounts returns a list of AWS accounts which the caller has access to.
-func getAccounts(ctx context.Context, ouId string) (acos.Accounts, error) {
+func getAccounts(ctx context.Context, opt GetAccountsOption) (acos.Accounts, error) {
 	var availableAccnts acos.Accounts
 	var err error
-	fallback := false
 
-	if len(accntIdsForDebugging) > 0 {
-		fmt.Fprintln(os.Stderr, "Running using debugging account IDs...")
-		_accnts := strings.Split(accntIdsForDebugging, ",")
-		availableAccnts = make(acos.Accounts, len(_accnts))
-		for _, id := range _accnts {
-			_id := strings.Clone(id)
-			availableAccnts[id] = acos.Account{
-				Id:   &_id,
-				Name: &_id,
-			}
+	if len(opt.AccountIds) > 0 {
+		fmt.Fprintln(os.Stderr, "Account IDs specified. Retrieving accounts information...")
+		availableAccnts, err = getAccountsByIds(ctx, opt.AccountIds)
+		if !acos.IsOrganizationEnabled(err) {
+			fmt.Fprint(os.Stderr, ERR_AWS_ORGANIZATION_NOT_ENABLED)
+		} else if !acos.HasPermissionToOrganizationsApi(err) {
+			fmt.Fprint(os.Stderr, "You don't have enough IAM permissions to perform \"organizations:ListAccounts\". ")
 		}
-	} else if len(ouId) > 0 {
-		fmt.Fprintf(os.Stderr, "Retrieving AWS accounts under the OU '%s'...\n", ouId)
-		// Should regex the ouId before calling the API?
-		// Doc - https://docs.aws.amazon.com/organizations/latest/APIReference/API_ListAccountsForParent.html#organizations-ListAccountsForParent-request-ParentId
-		availableAccnts, err = acos.ListAccountsByOu(ctx, ouId)
-		if err != nil {
-			if !acos.OuExists(err) {
-				// To avoid duplicated error messages, we override the AWS error by our own.
-				err = fmt.Errorf("error the OU \"%s\" doesn't exist", ouId)
-			} else if !acos.IsOrganizationEnabled(err) {
-				fmt.Fprint(os.Stderr, ERR_AWS_ORGANIZATION_NOT_ENABLED)
-				fallback = true
-			} else if !acos.HasPermissionToOrganizationsApi(err) {
-				fmt.Fprint(os.Stderr, "You don't have IAM permissions to perform \"organizations:ListAccountsForParent\". ")
-				fallback = true
-			}
+	} else if len(opt.OuId) > 0 {
+		fmt.Fprintf(os.Stderr, "Retrieving AWS accounts under the OU '%s'...\n", opt.OuId)
+		availableAccnts, err = getAccountsByOu(ctx, opt.OuId)
+		if !acos.OuExists(err) {
+			// To avoid duplicated error messages, we override the AWS error by our own.
+			err = fmt.Errorf("error the OU \"%s\" doesn't exist", opt.OuId)
+			// Stop the process here and we don't fall back to using the "getCallerAccount" func
+			// because the specified OU ID is not just valid.
+			return nil, err
+		} else if !acos.IsOrganizationEnabled(err) {
+			fmt.Fprint(os.Stderr, ERR_AWS_ORGANIZATION_NOT_ENABLED)
+		} else if !acos.HasPermissionToOrganizationsApi(err) {
+			fmt.Fprint(os.Stderr, "You don't have enough IAM permissions to perform \"organizations:ListAccountsForParent\". ")
 		}
 	} else {
-		availableAccnts, err = acos.ListAccounts(ctx)
-		if err != nil {
-			if !acos.IsOrganizationEnabled(err) {
-				fmt.Fprint(os.Stderr, ERR_AWS_ORGANIZATION_NOT_ENABLED)
-				fallback = true
-			} else if !acos.HasPermissionToOrganizationsApi(err) {
-				fmt.Fprint(os.Stderr, "You don't have IAM permissions to perform \"organizations:ListAccounts\". ")
-				fallback = true
-			}
+		availableAccnts, err = getAccountsInOrg(ctx)
+		if !acos.IsOrganizationEnabled(err) {
+			fmt.Fprint(os.Stderr, ERR_AWS_ORGANIZATION_NOT_ENABLED)
+		} else if !acos.HasPermissionToOrganizationsApi(err) {
+			fmt.Fprint(os.Stderr, "You don't have IAM permissions to perform \"organizations:ListAccounts\". ")
 		}
 	}
 
-	if fallback {
-		fmt.Fprintln(os.Stderr, "Using AWS STS and IAM instead to retrieve your AWS account information... ")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Trying to use AWS STS and IAM instead of organization to retrieve your AWS account information... ")
 		availableAccnts, err = getCallerAccount(ctx)
 	}
 	return availableAccnts, err
+}
+
+func getAccountsByIds(ctx context.Context, accountIds []string) (acos.Accounts, error) {
+	accounts, err := acos.ListAccounts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	availableAccnts := make(acos.Accounts, len(accountIds))
+	for _, id := range accountIds {
+		if len(id) == 0 {
+			continue
+		}
+		if a, ok := accounts[id]; ok {
+			availableAccnts[id] = acos.Account{
+				Id:   a.Id,
+				Name: a.Name,
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "Account ID '%s' is not found in your AWS organization\n", id)
+		}
+	}
+	return availableAccnts, nil
+}
+
+func getAccountsByOu(ctx context.Context, ouId string) (acos.Accounts, error) {
+	// Should regex the ouId before calling the API?
+	// Doc - https://docs.aws.amazon.com/organizations/latest/APIReference/API_ListAccountsForParent.html#organizations-ListAccountsForParent-request-ParentId
+	return acos.ListAccountsByOu(ctx, ouId)
+}
+
+func getAccountsInOrg(ctx context.Context) (acos.Accounts, error) {
+	return acos.ListAccounts(ctx)
 }
 
 // getCallerAccount returns the AWS account information of the caller.
@@ -93,9 +116,6 @@ func promptAccountsSelection(accnts acos.Accounts) (acos.Accounts, error) {
 		return nil, fmt.Errorf("error no accounts found")
 	} else if len(accnts) == 1 {
 		// No need to prompt the user to select accounts if there is only one account.
-		return accnts, nil
-	} else if len(accntIdsForDebugging) > 0 && len(accnts) > 0 {
-		// No need to prompt the user to select accounts if this is for debugging.
 		return accnts, nil
 	}
 
