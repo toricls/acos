@@ -119,6 +119,7 @@ func promptAccountsSelection(accnts acos.Accounts) (acos.Accounts, error) {
 		&selIdx,
 		survey.WithPageSize(10),
 		survey.WithKeepFilter(true), // It would be useful to keep the typed filter because we assume that people often use some sort of "prefix" for related AWS account names like "myproduct-prod", "myproduct-staging", "my-product-qa", ...
+		survey.WithStdio(os.Stdin, os.Stderr, os.Stderr), // Use stderr for the prompt message to avoid messing up the JSON output.
 	)
 	if err != nil {
 		return nil, err
