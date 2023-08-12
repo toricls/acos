@@ -10,6 +10,7 @@ import (
 )
 
 const ERR_AWS_ORGANIZATION_NOT_ENABLED = "This AWS account is not part of AWS Organizations organization. "
+const ERR_INFUFFICIENT_IAM_PERMISSIONS = "Failed to perform \"%s\".  Make sure you have enough IAM permissions. See https://github.com/toricls/acos#prerequisites for the details.\n"
 
 type GetAccountsOption struct {
 	AccountIds []string
@@ -27,7 +28,7 @@ func getAccounts(ctx context.Context, opt GetAccountsOption) (acos.Accounts, err
 		if !acos.IsOrganizationEnabled(err) {
 			fmt.Fprint(os.Stderr, ERR_AWS_ORGANIZATION_NOT_ENABLED)
 		} else if !acos.HasPermissionToOrganizationsApi(err) {
-			fmt.Fprint(os.Stderr, "You don't have enough IAM permissions to perform \"organizations:ListAccounts\". ")
+			fmt.Fprintf(os.Stderr, ERR_INFUFFICIENT_IAM_PERMISSIONS, "organizations:ListAccounts")
 		}
 	} else if len(opt.OuId) > 0 {
 		fmt.Fprintf(os.Stderr, "Retrieving AWS accounts under the OU '%s'...\n", opt.OuId)
@@ -41,19 +42,19 @@ func getAccounts(ctx context.Context, opt GetAccountsOption) (acos.Accounts, err
 		} else if !acos.IsOrganizationEnabled(err) {
 			fmt.Fprint(os.Stderr, ERR_AWS_ORGANIZATION_NOT_ENABLED)
 		} else if !acos.HasPermissionToOrganizationsApi(err) {
-			fmt.Fprint(os.Stderr, "You don't have enough IAM permissions to perform \"organizations:ListAccountsForParent\". ")
+			fmt.Fprintf(os.Stderr, ERR_INFUFFICIENT_IAM_PERMISSIONS, "organizations:ListAccountsForParent")
 		}
 	} else {
 		availableAccnts, err = getAccountsInOrg(ctx)
 		if !acos.IsOrganizationEnabled(err) {
 			fmt.Fprint(os.Stderr, ERR_AWS_ORGANIZATION_NOT_ENABLED)
 		} else if !acos.HasPermissionToOrganizationsApi(err) {
-			fmt.Fprint(os.Stderr, "You don't have IAM permissions to perform \"organizations:ListAccounts\". ")
+			fmt.Fprintf(os.Stderr, ERR_INFUFFICIENT_IAM_PERMISSIONS, "organizations:ListAccounts")
 		}
 	}
 
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Trying to use AWS STS and IAM instead of organization to retrieve your AWS account information... ")
+		fmt.Fprintln(os.Stderr, "Falling back to using \"sts:GetCallerIdentity\" and \"iam:ListAccountAliases\" to obtain your AWS account information... ")
 		availableAccnts, err = getCallerAccount(ctx)
 	}
 	return availableAccnts, err
