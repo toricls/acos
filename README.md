@@ -1,23 +1,23 @@
 # acos
 
-`acos` is an interactive CLI tool to retrieve and show your AWS costs 💸
+`acos` is an interactive CLI tool to retrieve and show your AWS costs using AWS Organizations and AWS Cost Explorer APIs 💸
 
 ![acos demo](acos-demo.gif)
 
 ## Prerequisites
 
-`acos` requires the below AWS IAM permissions to retrieve cost related data by default.
+`acos` by default uses AWS Organizations and AWS Cost Explorer APIs, so that it requires the following AWS IAM permissions to retrieve cost related data.
 
-- [ce:GetCostAndUsage](https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html) *1
-- [organizations:ListAccounts](https://docs.aws.amazon.com/organizations/latest/APIReference/API_ListAccounts.html) *2
+- [ce:GetCostAndUsage](https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html) [^1]
+- [organizations:ListAccounts](https://docs.aws.amazon.com/organizations/latest/APIReference/API_ListAccounts.html) [^2]
 
-When `acos` runs with the `--ou` option, it requires the below AWS IAM permission _instead of_ `organizations:ListAccounts`.
+With the `--ou` option, it requires `organizations:ListAccountsForParent` IAM permission _instead of_ `organizations:ListAccounts`.
 
-- [organizations:ListAccountsForParent](https://docs.aws.amazon.com/organizations/latest/APIReference/API_ListAccountsForParent.html)
+- [organizations:ListAccountsForParent](https://docs.aws.amazon.com/organizations/latest/APIReference/API_ListAccountsForParent.html) [^2]
 
-*1) In addition to the IAM permission, you may also need to enable Cost Explorer in your AWS account [here](https://console.aws.amazon.com/cost-management/home), and to activate IAM Access to the billing console [here](https://console.aws.amazon.com/billing/home#/account) using the root user credentials. See the docs for [AWS Organizational accounts](https://docs.aws.amazon.com/cost-management/latest/userguide/ce-access.html#ce-iam-users) or for [standalone accounts](https://docs.aws.amazon.com/cost-management/latest/userguide/ce-enable.html) for more details.
+[^1]: Make sure you also have [AWS Cost Explorer](https://console.aws.amazon.com/cost-management/home) enabled and have [IAM access to the billing data](https://console.aws.amazon.com/billing/home#/account) activated using your root user credentials beforehand. See also the [docs to enable Cost Explorer for AWS Organizational accounts](https://docs.aws.amazon.com/cost-management/latest/userguide/ce-access.html#ce-iam-users), and the [docs to activate IAM access to the billing data](https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_billing.html).
 
-*2) `acos` falls back to (1) [sts:GetCallerIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html) and (2) [iam:ListAccountAliases](https://docs.aws.amazon.com/IAM/latest/APIReference/API_ListAccountAliases.html) to retrieve your AWS account ID and alias, in case `organizations:ListAccounts` fails. This should happen when the AWS account you're accessing via `acos` is not part of an AWS Organization's organization and/or you don't have enough permissions to use the API.
+[^2]: `acos` falls back to using (1) [sts:GetCallerIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html) and (2) [iam:ListAccountAliases](https://docs.aws.amazon.com/IAM/latest/APIReference/API_ListAccountAliases.html) to retrieve your AWS account ID and alias, in case `organizations:ListAccounts` fails. This should happen when the AWS account you're accessing via `acos` is not part of an AWS Organization and/or you don't have enough permissions to use the AWS Organizations APIs.
 
 ## Installation
 
