@@ -10,7 +10,7 @@ import (
 )
 
 const ERR_AWS_ORGANIZATION_NOT_ENABLED = "This AWS account is not part of AWS Organizations organization. "
-const ERR_INFUFFICIENT_IAM_PERMISSIONS = "Failed to perform \"%s\".  Make sure you have enough IAM permissions. See https://github.com/toricls/acos#prerequisites for the details.\n"
+const ERR_INFUFFICIENT_IAM_PERMISSIONS = "Failed to perform \"%s\".  Make sure you have sufficient IAM permissions. See https://github.com/toricls/acos#prerequisites for the details.\n"
 
 type GetAccountsOption struct {
 	AccountIds []string

@@ -17,7 +17,7 @@ With the `--ou` option, it requires `organizations:ListAccountsForParent` IAM pe
 
 [^1]: Make sure you also have [AWS Cost Explorer](https://console.aws.amazon.com/cost-management/home) enabled and have [IAM access to the billing data](https://console.aws.amazon.com/billing/home#/account) activated using your root user credentials beforehand. See also the [docs to enable Cost Explorer for AWS Organizational accounts](https://docs.aws.amazon.com/cost-management/latest/userguide/ce-access.html#ce-iam-users), and the [docs to activate IAM access to the billing data](https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_billing.html).
 
-[^2]: `acos` falls back to using (1) [sts:GetCallerIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html) and (2) [iam:ListAccountAliases](https://docs.aws.amazon.com/IAM/latest/APIReference/API_ListAccountAliases.html) to retrieve your AWS account ID and alias, in case `organizations:ListAccounts` fails. This should happen when the AWS account you're accessing via `acos` is not part of an AWS Organization and/or you don't have enough permissions to use the AWS Organizations APIs.
+[^2]: `acos` falls back to using (1) [sts:GetCallerIdentity](https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html) and (2) [iam:ListAccountAliases](https://docs.aws.amazon.com/IAM/latest/APIReference/API_ListAccountAliases.html) to retrieve your AWS account ID and alias, in case `organizations:ListAccounts` fails. This should happen when the AWS account you're accessing via `acos` is not part of an AWS Organization, and/or you don't have sufficient permissions to use the AWS Organizations APIs.
 
 ## Installation
 
