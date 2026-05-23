@@ -1,0 +1,21 @@
+[package]
+name = "acos"
+version = "0.1.0"
+edition = "2021"
+description = "An interactive CLI tool to retrieve and show your AWS costs"
+license = "Apache-2.0"
+
+[dependencies]
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-costexplorer = "1"
+aws-sdk-organizations = "1"
+aws-sdk-sts = "1"
+aws-sdk-iam = "1"
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+dialoguer = "0.11"
+comfy-table = "7"
+anyhow = "1"

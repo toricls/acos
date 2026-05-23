@@ -21,25 +21,37 @@ With the `--ou` option, it requires `organizations:ListAccountsForParent` IAM pe
 
 ## Installation
 
+### From source
+
 ```shell
-$ go install github.com/toricls/acos/cmd/acos@latest
+$ cargo install --git https://github.com/toricls/acos
+```
+
+### Build locally
+
+```shell
+$ git clone https://github.com/toricls/acos.git
+$ cd acos
+$ make build
+$ ./dist/acos --help
 ```
 
 ## Usage
 
 ```shell
 $ acos --help
-Usage of acos:
-  -accountIds string
-    	Optional - Comma-separated AWS account IDs to retrieve costs. The interactive account selector is skipped when this flag is set.
-  -asOf string
-    	Optional - The date to retrieve the cost data. The format should be 'YYYY-MM-DD'. The default value is today in UTC.
-  -comparedTo string
-    	Optional - The cost of this month will be compared to either one of 'YESTERDAY' or 'LAST_WEEK'. This flag is ignored when the -json flag is set. (default "YESTERDAY")
-  -json
-    	Optional - Print JSON instead of a table.
-  -ou string
-    	Optional - The ID of an AWS Organizational Unit (OU) or Root to list direct-children AWS accounts. It must start with 'ou-' or 'r-' prefix. This flag is ignored when the -accountIds flag is set.
+An interactive CLI tool to retrieve and show your AWS costs
+
+Usage: acos [OPTIONS]
+
+Options:
+      --ou <OU>                  The ID of an AWS Organizational Unit (OU) or Root to list direct-children AWS accounts
+      --as-of <AS_OF>            The date to retrieve the cost data. The format should be 'YYYY-MM-DD'
+      --compared-to <COMPARED_TO>  The cost of this month will be compared to either 'YESTERDAY' or 'LAST_WEEK' [default: YESTERDAY]
+      --json                     Print JSON instead of table
+      --account-ids <ACCOUNT_IDS>  Comma-separated AWS account IDs to retrieve costs
+  -h, --help                     Print help
+  -V, --version                  Print version
 ```
 
 ### Accounts within AWS Organization
@@ -48,62 +60,60 @@ Usage of acos:
 $ acos
 ? Select accounts: 567890123456 - my-prod, 123456789012 - my-sandbox
 +--------------+--------------+----------------+------------------+----------------+
-|  ACCOUNT ID  | ACCOUNT NAME | THIS MONTH ($) | VS YESTERDAY ($) | LAST MONTH ($) |
+|  Account ID  | Account Name | This Month ($) | vs Yesterday ($) | Last Month ($) |
 +--------------+--------------+----------------+------------------+----------------+
 | 123456789012 | my-sandbox   |       0.038331 |       + 0.002255 |       0.127884 |
 | 567890123456 | my-prod      |    5820.334869 |     + 324.526062 |   10765.384186 |
 +--------------+--------------+----------------+------------------+----------------+
-|                       TOTAL |    5820.373201 |     + 324.528317 |   10765.512070 |
+|              | Total        |    5820.373201 |     + 324.528317 |   10765.512070 |
 +--------------+--------------+----------------+------------------+----------------+
 As of 2023-07-18.
 ```
 
 ### Accounts under specific AWS Organizational Unit (OU)
 
-Use `--ou` option to filter selectable AWS accounts by specific OU. Note that the `--ou` option is ignored when the `--accountIds` option is set.
-
-```shell
+Use `--ou` option to filter selectable AWS accounts by specific OU. Note that the `--ou` option is ignored when the `--account-ids` option is set.
 
 ```shell
 $ acos --ou ou-xxxx-12345678
 Retrieving AWS accounts under the OU 'ou-xxxx-12345678'...
 ? Select accounts: 234567890123 - my-dev, 123456789012 - my-sandbox
 +--------------+--------------+----------------+------------------+----------------+
-|  ACCOUNT ID  | ACCOUNT NAME | THIS MONTH ($) | VS YESTERDAY ($) | LAST MONTH ($) |
+|  Account ID  | Account Name | This Month ($) | vs Yesterday ($) | Last Month ($) |
 +--------------+--------------+----------------+------------------+----------------+
 | 123456789012 | my-sandbox   |       0.038331 |       + 0.002255 |       0.127884 |
 | 234567890123 | my-dev       |     420.102431 |      + 25.801012 |     980.440598 |
 +--------------+--------------+----------------+------------------+----------------+
-|                       TOTAL |     420.140762 |      + 25.803267 |     980.568482 |
+|              | Total        |     420.140762 |      + 25.803267 |     980.568482 |
 +--------------+--------------+----------------+------------------+----------------+
 As of 2023-07-18.
 ```
 
 ### Specific AWS accounts
 
-Use `--accountIds` option to retrieve costs for specific AWS accounts.
+Use `--account-ids` option to retrieve costs for specific AWS accounts.
 
 ```shell
-% ./dist/acos --accountIds 123456789012,567890123456
+$ acos --account-ids 123456789012,567890123456
 Account IDs specified. Retrieving accounts information...
 +--------------+--------------+----------------+------------------+----------------+
-|  ACCOUNT ID  | ACCOUNT NAME | THIS MONTH ($) | VS YESTERDAY ($) | LAST MONTH ($) |
+|  Account ID  | Account Name | This Month ($) | vs Yesterday ($) | Last Month ($) |
 +--------------+--------------+----------------+------------------+----------------+
 | 123456789012 | my-sandbox   |       0.038331 |       + 0.002255 |       0.127884 |
 | 567890123456 | my-prod      |    5820.334869 |     + 324.526062 |   10765.384186 |
 +--------------+--------------+----------------+------------------+----------------+
-|                       TOTAL |    5820.373201 |     + 324.528317 |   10765.512070 |
+|              | Total        |    5820.373201 |     + 324.528317 |   10765.512070 |
 +--------------+--------------+----------------+------------------+----------------+
 As of 2023-07-18.
 ```
 
-The `--json` option would be the best fit here because the `--accountIds` option skips the interactive account selector. You may use this combination of options to retrieve costs in a machine-readable format on a cron'd regular basis for example.
+The `--json` option would be the best fit here because the `--account-ids` option skips the interactive account selector. You may use this combination of options to retrieve costs in a machine-readable format on a cron'd regular basis for example.
 
 ```shell
-# Using --accountIds and --json options
-% ./dist/acos --accountIds 123456789012,567890123456 --json | jq .
+# Using --account-ids and --json options
+$ acos --account-ids 123456789012,567890123456 --json | jq .
 {
-  "AsOf": "2023-07-18T14:18:00.182227402Z",
+  "AsOf": "2023-07-18T00:00:00Z",
   "Costs": [
     {
       "AccountID": "123456789012",
@@ -127,7 +137,6 @@ The `--json` option would be the best fit here because the `--accountIds` option
 
 ## Todo
 
-- Add some tests
 - ~Support OU-based accounts listing~ done
 - ~Support command arguments~, configuration file, and/or env vars for repeated use
 - ~Support JSON format output for piped commands chaining~ done

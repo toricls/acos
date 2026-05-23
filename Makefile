@@ -1,5 +1,4 @@
 BIN=acos
-#COMMIT_SHA=$(shell git rev-parse --short HEAD)
 
 .PHONY: help
 ## help: prints this help message
@@ -11,26 +10,33 @@ help:
 ## build: build the application
 build: clean
 	@echo "Building..."
-	@go build -o ./dist/${BIN} ./cmd/acos
+	@cargo build --release
+	@mkdir -p ./dist
+	@cp ./target/release/${BIN} ./dist/${BIN}
 
 .PHONY: run
-## run: runs go run ./cmd/acos
+## run: runs the application
 run:
-	go run -race ./cmd/acos
+	cargo run
 
 .PHONY: clean
 ## clean: cleans the binary
 clean:
 	@echo "Cleaning"
-	@go clean
+	@cargo clean
+	@rm -rf ./dist
 
-.PHONE: test
-## test: runs go test with default values
+.PHONY: test
+## test: runs tests
 test:
-	go test -v -count=1 -race ./...
+	cargo test
 
-.PHONY: setup
-## setup: setup go modules
-setup:
-	@go mod tidy \
-		&& go mod vendor
+.PHONY: fmt
+## fmt: formats the code
+fmt:
+	cargo fmt
+
+.PHONY: lint
+## lint: runs clippy linter
+lint:
+	cargo clippy -- -D warnings
