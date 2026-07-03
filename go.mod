@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.27
 	github.com/aws/aws-sdk-go-v2/service/costexplorer v1.25.13
 	github.com/aws/aws-sdk-go-v2/service/iam v1.21.1
-	github.com/aws/aws-sdk-go-v2/service/organizations v1.19.9
+	github.com/aws/aws-sdk-go-v2/service/organizations v1.51.12
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.5
 	github.com/olekukonko/tablewriter v0.0.5
 )
